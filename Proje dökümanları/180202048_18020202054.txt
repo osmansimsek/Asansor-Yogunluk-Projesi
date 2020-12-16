@@ -1,0 +1,729 @@
+// Bu proje C# Form Uygulaması olarak yapılmıştır. Eğer Kaynak kodlarını yerleştirmek isterseniz : 
+// Proje Adı (namespace' i ) AsansörProjesiForm olarak açmanız gerekmektedir.
+// Formumuzun ismi Form1 olucaktır ve partial class olduğundan dolayı bu dosyadaki ilk parçası AnaFormun içine yapıştırılmalıdır.
+// Diğer parçasıda AnaForm.Designeer.cs classının içine yapıştırılmalıdır.
+
+
+
+
+// --------------------------------------Form1 Partial Classın Bir Parçası----------------------------------------------
+
+ public partial class Form1 : Form
+    {
+        List<Kat> katlar;
+        List<Label> asansorTabloComponent;
+        Asansor asansor;
+        Giris giris;
+        Cikis cikis;
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            lblFloor1QueueYazdir.Text = "";
+            lblFloor2QueueYazdir.Text = "";
+            lblFloor3QueueYazdir.Text = "";
+            lblFloor4QueueYazdir.Text = "";
+            lblExitCount.Text = "";
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            CheckForIllegalCrossThreadCalls = false;
+
+            katlar = new List<Kat>()
+            {
+                { new Kat(0,lblFloor0Queue,null,lblFloor0QueueYazdir, lblExitCount) },
+                { new Kat(1,lblFloor1Queue,lblFloor1All,lblFloor1QueueYazdir, null) },
+                { new Kat(2,lblFloor2Queue,lblFloor2All,lblFloor2QueueYazdir, null) },
+                { new Kat(3,lblFloor3Queue,lblFloor3All,lblFloor3QueueYazdir, null) },
+                { new Kat(4,lblFloor4Queue,lblFloor4All,lblFloor4QueueYazdir, null) },
+            };
+
+            giris = new Giris(katlar);
+            cikis = new Cikis(katlar);
+
+            asansorTabloComponent = new List<Label>()
+            {
+                { asansor1Active },
+                { asansor1capatiy },
+                { asansor1Countİnside },
+                { asansor1destination },
+                { asansor1direction },
+                { asansor1floor },
+                { asansor1inside },
+                { asansor1mode },
+            };
+
+            asansor = new Asansor(katlar, asansorTabloComponent)
+            {
+                mod = AsansorModKomutları.working,
+            };
+
+            asansor.asansorThread.Start();
+        }
+    }
+
+
+
+// --------------------------------------Asansor Classı----------------------------------------------
+    class Asansor
+    {
+        public Thread asansorThread;
+
+        List<Grup> asansordekiKisiler;
+        List<Kat> katlar;
+        List<Label> asansorTabloComponent;
+
+        public int hedefKat;
+        public int kat;
+        public int kisiSayisi;
+
+        public AsansorModKomutları mod = AsansorModKomutları.idle;
+        public AsansorYonKomutları yon = AsansorYonKomutları.up;
+        public AsansorMusteriKomutları musteriKomutları = AsansorMusteriKomutları.YolcuGotur;
+
+        public Asansor(List<Kat> katlar, List<Label> asansorTabloComponent)
+        {
+            this.asansorTabloComponent = asansorTabloComponent;
+            this.katlar = katlar;
+            this.hedefKat = 0;
+            this.kat = 0;
+            this.kisiSayisi = 0;
+
+            asansordekiKisiler = new List<Grup>();
+            asansorThread = new Thread(new ThreadStart(AsansorHareket))
+            {
+                Name = "Asansor",
+                IsBackground = true,
+            };
+        }
+
+        public void AsansorHareket()
+        {
+            if (this.mod == AsansorModKomutları.working)
+            {
+                while (true)
+                {
+                    AsansorTabloKontrol();
+
+                    if (musteriKomutları == AsansorMusteriKomutları.YolcuGotur)
+                    {
+                        if (kat == 0 && kisiSayisi == 0)
+                        {
+                            MusteriAl();
+                            AsansorTabloKontrol();
+
+                            HedefKatBelirle();
+                            AsansorTabloKontrol();
+
+                            HedefeGit();
+                            AsansorTabloKontrol();
+                        }
+                        else if (kat != 0 && kisiSayisi != 0)
+                        {
+                            MusteriBirak();
+                            AsansorTabloKontrol();
+
+                            HedefKatBelirle();
+                            AsansorTabloKontrol();
+
+                            HedefeGit();
+                            AsansorTabloKontrol();
+                        }
+                        else if (kat != 0 && kisiSayisi == 0)
+                        {
+                            musteriKomutları = AsansorMusteriKomutları.YolcuTopla;
+                            AsansorTabloKontrol();
+                        }
+                    }
+                    else if (musteriKomutları == AsansorMusteriKomutları.YolcuTopla)
+                    {
+                        HedefKatBelirle();
+                        AsansorTabloKontrol();
+
+                        HedefeGit();
+                        AsansorTabloKontrol();
+
+                        if (kat != 0)
+                        {
+                            MusteriAl();
+                            AsansorTabloKontrol();
+                        }
+                        else if (kat == 0)
+                        {
+                            MusteriBirak();
+                            AsansorTabloKontrol();
+
+                            musteriKomutları = AsansorMusteriKomutları.YolcuGotur;
+                        }
+                    }
+
+                    AsansorTabloKontrol();
+                }
+            }
+        }
+
+        private void AsansorTabloKontrol()
+        {
+            if (mod == AsansorModKomutları.working)
+            {
+                asansorTabloComponent[0].Text = true.ToString();
+            }
+            else
+            {
+                asansorTabloComponent[0].Text = false.ToString();
+            }
+
+            asansorTabloComponent[1].Text = Utilites.asansorKapasite.ToString();
+            asansorTabloComponent[2].Text = kisiSayisi.ToString();
+            asansorTabloComponent[3].Text = hedefKat.ToString();
+            asansorTabloComponent[4].Text = yon.ToString();
+            asansorTabloComponent[5].Text = kat.ToString();
+            asansorTabloComponent[6].Text = "";
+
+            lock (this)
+            {
+                foreach (Grup grup in asansordekiKisiler)
+                {
+                    asansorTabloComponent[6].Text += string.Format("({0},{1})", grup.kisiSayisi,
+                                                                   grup.katSayisi);
+                }
+            }
+
+            asansorTabloComponent[7].Text = mod.ToString();
+        }
+
+        public int HedefKatBelirle()
+        {
+            if (musteriKomutları == AsansorMusteriKomutları.YolcuGotur)
+            {
+                if (asansordekiKisiler.Count != 0)
+                {
+                    int enKucuk = Utilites.avmKatSayisi;
+
+                    foreach (Grup grup in asansordekiKisiler)
+                    {
+                        if (grup.katSayisi < enKucuk)
+                        {
+                            enKucuk = grup.katSayisi;
+                        }
+                    }
+
+                    hedefKat = enKucuk;
+                }
+            }
+
+            else if (musteriKomutları == AsansorMusteriKomutları.YolcuTopla)
+            {
+                if (kisiSayisi < 10)
+                {
+                    int enBuyuk = 0;
+
+                    foreach (Kat kat in katlar)
+                    {
+                        if (kat.cikanKisiler.Count != 0)
+                        {
+                            if (enBuyuk < kat.katNumarasi)
+                            {
+                                enBuyuk = kat.katNumarasi;
+                            }
+                        }
+                    }
+
+                    hedefKat = enBuyuk;
+                }
+
+                else if (kisiSayisi == 10)
+                {
+                    hedefKat = 0;
+                }
+            }
+
+            return hedefKat;
+        }
+
+        public void MusteriAl()
+        {
+
+            if (musteriKomutları == AsansorMusteriKomutları.YolcuGotur)
+            {
+                while (true)
+                {
+                    if (kisiSayisi < Utilites.asansorKapasite && kisiSayisi >= 0)
+                    {
+                        if (kat == 0 && katlar[kat].gelenKisiler.Count > 0)
+                        {
+                            if (kisiSayisi + katlar[kat].gelenKisiler.Peek().kisiSayisi <= Utilites.asansorKapasite)
+                            {
+                                kisiSayisi += katlar[kat].gelenKisiler.Peek().kisiSayisi;
+                                asansordekiKisiler.Add(katlar[kat].gelenKisiler.Dequeue());
+
+                                // kat tablo kontrolü
+                                katlar[kat].kuyrukSayisi--;
+                            }
+                            else if (kisiSayisi + katlar[kat].gelenKisiler.Peek().kisiSayisi > Utilites.asansorKapasite)
+                            {
+                                int asansorDolumFark = Utilites.asansorKapasite - kisiSayisi;
+
+                                Grup grup = new Grup()
+                                {
+                                    katSayisi = katlar[kat].gelenKisiler.Peek().katSayisi,
+                                    kisiSayisi = asansorDolumFark,
+                                };
+
+                                kisiSayisi += asansorDolumFark;
+                                katlar[kat].gelenKisiler.Peek().kisiSayisi -= asansorDolumFark;
+                                asansordekiKisiler.Add(grup);
+                            }
+                        }
+                        else if (kat == 0 && katlar[kat].gelenKisiler.Count == 0)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            else if (musteriKomutları == AsansorMusteriKomutları.YolcuTopla)
+            {
+                while (true)
+                {
+                    if (kisiSayisi < Utilites.asansorKapasite && kisiSayisi >= 0)
+                    {
+                        if (kat != 0 && katlar[kat].cikanKisiler.Count > 0)
+                        {
+                            if (kisiSayisi + katlar[kat].cikanKisiler.Peek().kisiSayisi <= Utilites.asansorKapasite)
+                            {
+                                // kat tablo kontrolü
+                                katlar[kat].kuyrukSayisi--;
+                                katlar[kat].KuyrukYazdir(kat);
+                                katlar[kat].KisiSayisiYazdır(kat);
+                                katlar[kat].KuyrukSayisiYazdır();
+
+                                kisiSayisi += katlar[kat].cikanKisiler.Peek().kisiSayisi;
+                                asansordekiKisiler.Add(katlar[kat].cikanKisiler.Dequeue());
+
+                            }
+                            else if (kisiSayisi + katlar[kat].cikanKisiler.Peek().kisiSayisi > Utilites.asansorKapasite)
+                            {
+
+                                int asansorDolumFark = Utilites.asansorKapasite - kisiSayisi;
+
+                                Grup grup = new Grup()
+                                {
+                                    katSayisi = katlar[kat].cikanKisiler.Peek().katSayisi,
+                                    kisiSayisi = asansorDolumFark,
+                                };
+
+                                // kat tablo kontrolü
+                                katlar[kat].KuyrukYazdir(kat);
+                                katlar[kat].KuyrukSayisiYazdır();
+                                katlar[kat].KisiSayisiYazdır(kat);
+
+                                kisiSayisi += asansorDolumFark;
+                                katlar[kat].cikanKisiler.Peek().kisiSayisi -= asansorDolumFark;
+                                asansordekiKisiler.Add(grup);
+                            }
+                        }
+                        else if (kat != 0 && katlar[kat].cikanKisiler.Count == 0)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        public void MusteriBirak()
+        {
+            if (musteriKomutları == AsansorMusteriKomutları.YolcuGotur)
+            {
+                if (hedefKat == kat)
+                {
+                    for (int i = 0; i < asansordekiKisiler.Count; i++)
+                    {
+                        if (asansordekiKisiler[i].katSayisi == kat)
+                        {
+                            kisiSayisi -= asansordekiKisiler[i].kisiSayisi;
+                            katlar[kat].gelenKisiler.Enqueue(asansordekiKisiler[i]);
+
+                            // kat tablo kontrolü
+                            katlar[kat].kisiSayisi += asansordekiKisiler[i].kisiSayisi;
+                            katlar[kat].KisiSayisiYazdır(kat);
+                            katlar[kat].KuyrukYazdir(kat);
+                            katlar[kat].KuyrukSayisiYazdır();
+
+                            asansordekiKisiler.RemoveAt(i);
+
+                            i = 0;
+                        }
+                    }
+                }
+            }
+            else if (musteriKomutları == AsansorMusteriKomutları.YolcuTopla)
+            {
+                if (kat == 0)
+                {
+                    foreach (Grup grup in asansordekiKisiler)
+                    {
+                        katlar[kat].cikisYapanSayisi += grup.kisiSayisi;
+                    }
+
+                    // kat tablo kontrolü
+                    katlar[kat].CikisSayisiYazdır();
+
+                    asansordekiKisiler.Clear();
+                    kisiSayisi = 0;
+                }
+            }
+        }
+
+        private void HedefeGit()
+        {
+            while (true)
+            {
+                if (hedefKat == kat)
+                {
+                    break;
+                }
+                else
+                {
+                    if (hedefKat > kat)
+                    {
+                        YukariHareketEt();
+                    }
+                    else
+                    {
+                        AsagiHareketEt();
+                    }
+                }
+            }
+        }
+
+        public void YukariHareketEt()
+        {
+            if (hedefKat != kat)
+            {
+                kat++;
+                yon = AsansorYonKomutları.up;
+
+            }
+
+            Thread.Sleep(Utilites.asansorKatGecisSuresi);
+        }
+
+        public void AsagiHareketEt()
+        {
+            if (hedefKat != kat)
+            {
+                kat--;
+                yon = AsansorYonKomutları.down;
+
+            }
+
+            Thread.Sleep(Utilites.asansorKatGecisSuresi);
+        }
+    }
+
+
+
+// --------------------------------------Cikis Classı----------------------------------------------
+
+
+    class Cikis
+    {
+        Thread cikisThread;
+        List<Kat> katlar;
+        Random random;
+
+        public Cikis(List<Kat> katlar)
+        {
+            this.katlar = katlar;
+
+            random = new Random();
+            cikisThread = new Thread(new ThreadStart(MusteriCikart))
+            {
+                Name = "CikisThread",
+                IsBackground = true,
+            };
+            cikisThread.Start();
+        }
+
+        public void MusteriCikart()
+        {
+            while (true)
+            {
+                int katSayisi = 1 + random.Next(4);
+
+                if (katlar[katSayisi].gelenKisiler.Count != 0)
+                {
+                    int kisiSayisi = 1 + random.Next(5);
+
+                    while (true)
+                    {
+                        if (kisiSayisi == 0 || katlar[katSayisi].gelenKisiler.Count == 0)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            if (katlar[katSayisi].gelenKisiler.Peek().kisiSayisi - kisiSayisi <= 0)
+                            {
+                                // kat tablo kontrolü
+                                katlar[katSayisi].kisiSayisi -= katlar[katSayisi].gelenKisiler.Peek().kisiSayisi;
+                                katlar[katSayisi].kuyrukSayisi++;
+                               
+                                kisiSayisi -= katlar[katSayisi].gelenKisiler.Peek().kisiSayisi;
+                                katlar[katSayisi].gelenKisiler.Peek().katSayisi = 0;
+                                katlar[katSayisi].cikanKisiler.Enqueue(katlar[katSayisi].gelenKisiler.Dequeue());
+
+                                // kat tablo kontrolü
+                                katlar[katSayisi].KuyrukSayisiYazdır();
+                                katlar[katSayisi].KuyrukYazdir(katSayisi);
+                            }
+
+                            else if (katlar[katSayisi].gelenKisiler.Peek().kisiSayisi - kisiSayisi > 0)
+                            {
+                                Grup grup = new Grup()
+                                {
+                                    katSayisi = 0,
+                                    kisiSayisi = kisiSayisi,
+                                };
+
+                                katlar[katSayisi].gelenKisiler.Peek().kisiSayisi -= kisiSayisi;
+                                katlar[katSayisi].cikanKisiler.Enqueue(grup);
+
+                                // kat tablo kontrolü
+                                katlar[katSayisi].kisiSayisi -= kisiSayisi;
+                                katlar[katSayisi].kuyrukSayisi++;
+                                katlar[katSayisi].KuyrukSayisiYazdır();
+                                katlar[katSayisi].KuyrukYazdir(katSayisi);
+
+                                kisiSayisi = 0;
+                            }
+                        }
+                    }
+                }
+
+                Thread.Sleep(Utilites.cikisThreadCalismaSuresi);
+            }
+        }
+    }
+
+
+
+// --------------------------------------Giris Classı----------------------------------------------
+
+ class Giris
+    {
+        public Thread girisThread;
+
+        List<Kat> katlar;
+        Random random;
+
+        public Giris(List<Kat> katlar)
+        {
+            this.katlar = katlar;
+  
+            random = new Random();
+            girisThread = new Thread(new ThreadStart(MusteriEkle))
+            {
+                Name = "GirisThread",
+                IsBackground = false,
+            };
+            girisThread.Start();
+        }
+
+        private void MusteriEkle()
+        {
+            while (true)
+            {
+                int kisiSayisi = 1 + random.Next(10);
+                int katSayisi = 1 + random.Next(4);
+
+                Grup grup = new Grup()
+                {
+                    kisiSayisi = kisiSayisi,
+                    katSayisi = katSayisi,
+                };
+
+                katlar[0].kuyrukSayisi++;
+                katlar[0].gelenKisiler.Enqueue(grup);
+
+                // kat tablo kontrolü
+                katlar[0].KuyrukSayisiYazdır();
+                katlar[0].KuyrukYazdir(0);
+
+                Thread.Sleep(Utilites.girisThreadCalismaSuresi);
+            }
+        }
+    }
+
+
+// --------------------------------------Grup Classı----------------------------------------------
+
+
+  class Grup
+    {
+        public int kisiSayisi;
+        public int katSayisi;
+
+        public Grup()
+        {
+            this.kisiSayisi = 0;
+            this.katSayisi = 0;
+        }
+    }
+
+// --------------------------------------Kat Classı----------------------------------------------
+
+class Kat
+    {
+        public Queue<Grup> cikanKisiler;
+        public Queue<Grup> gelenKisiler;
+
+        public int katNumarasi;
+        public int cikisYapanSayisi;
+        public int kisiSayisi;
+        public int kuyrukSayisi;
+
+        Label kuyrukSayisiLabel;
+        Label kisiSayisiLabel;
+        Label kuyrukYazdırLabel;
+        Label cikisSayisiLabel;
+
+        public Kat(int katNumarasi, Label kuyrukSayisiLabel, Label kisiSayisiLabel,
+                       Label kuyrukYazdırLabel, Label cikisSayisiLabel)
+        {
+            this.katNumarasi = katNumarasi;
+            this.kisiSayisi = 0;
+            this.kuyrukSayisi = 0;
+            this.cikisYapanSayisi = 0;
+
+            this.kuyrukSayisiLabel = kuyrukSayisiLabel;
+            this.kisiSayisiLabel = kisiSayisiLabel;
+            this.kuyrukYazdırLabel = kuyrukYazdırLabel;
+            this.cikisSayisiLabel = cikisSayisiLabel;
+
+            gelenKisiler = new Queue<Grup>();
+            cikanKisiler = new Queue<Grup>();
+        }
+
+        public void KuyrukSayisiYazdır()
+        {
+            kuyrukSayisiLabel.Text = kuyrukSayisi.ToString();
+            kuyrukSayisiLabel.Refresh();
+        }
+
+        public void KuyrukYazdir(int kat)
+        {
+            kuyrukYazdırLabel.Text = "";
+
+            if (kat == 0)
+            {
+                lock (this)
+                {
+                    for (int i = 0; i < gelenKisiler.Count; i++)
+                    {
+                        string yazdirilicakMetin = string.Format("[{0},{1}], ",
+                            gelenKisiler.ElementAt<Grup>(i).kisiSayisi,
+                            gelenKisiler.ElementAt<Grup>(i).katSayisi);
+
+                        kuyrukYazdırLabel.Text += yazdirilicakMetin;
+                        kuyrukYazdırLabel.Refresh();
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < cikanKisiler.Count; i++)
+                {
+                    string yazdirilicakMetin = string.Format("[{0},{1}], ",
+                        cikanKisiler.ElementAt<Grup>(i).kisiSayisi,
+                        cikanKisiler.ElementAt<Grup>(i).katSayisi);
+
+                    kuyrukYazdırLabel.Text += yazdirilicakMetin;
+                    kuyrukYazdırLabel.Refresh();
+                }
+            }
+
+        }
+
+        public void KisiSayisiYazdır(int kat)
+        {
+            if (kat != 0)
+            {
+                int toplam = 0;
+
+                for (int i = 0; i < gelenKisiler.Count; i++)
+                {
+                    toplam += gelenKisiler.ElementAt<Grup>(i).kisiSayisi;
+                }
+
+                kisiSayisiLabel.Text = toplam.ToString();
+                kisiSayisiLabel.Refresh();
+            }
+        }
+
+        public void CikisSayisiYazdır()
+        {
+            cikisSayisiLabel.Text = "";
+            cikisSayisiLabel.Text = cikisYapanSayisi.ToString();
+            cikisSayisiLabel.Refresh();
+        }
+    }
+
+
+// --------------------------------------Program Classı----------------------------------------------
+
+ static class Program
+    {
+        /// <summary>
+        /// The main entry point for the application.
+        /// </summary>
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
+        }
+    }
+
+
+// -------------------------------------Utilites Classı----------------------------------------------
+
+  public enum AsansorModKomutları
+    {
+        idle, working
+    }
+
+    public enum AsansorYonKomutları
+    {
+        down, up
+    }
+
+    public enum AsansorMusteriKomutları
+    {
+        YolcuGotur, YolcuTopla
+    }
+
+    class Utilites
+    {
+        public static readonly int avmKatSayisi = 5;
+        public static readonly int asansorSayisi = 5;
+        public static readonly int asansorKapasite = 10;
+        public static readonly int asansorKatGecisSuresi = 200;
+        public static readonly int girisThreadCalismaSuresi = 500;
+        public static readonly int cikisThreadCalismaSuresi = 1000;
+    }
+
+

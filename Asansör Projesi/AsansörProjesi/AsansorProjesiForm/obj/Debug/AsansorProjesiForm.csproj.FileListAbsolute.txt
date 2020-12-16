@@ -1,0 +1,10 @@
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\bin\Debug\AsansorProjesiForm.exe.config
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\bin\Debug\AsansorProjesiForm.exe
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\bin\Debug\AsansorProjesiForm.pdb
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.csprojAssemblyReference.cache
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.Form1.resources
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.Properties.Resources.resources
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.csproj.GenerateResource.cache
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.csproj.CoreCompileInputs.cache
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.exe
+C:\Users\Osman\Desktop\Asansör Projesi\AsansörProjesi\AsansorProjesiForm\obj\Debug\AsansorProjesiForm.pdb
